@@ -1,0 +1,5 @@
+.*.swp
+.stack/
+dist-newstyle/
+dist/
+tags
