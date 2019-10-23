@@ -22,6 +22,7 @@ library
                      , Control.Monad.Stack.State
                      , Control.Monad.Stack.Reader
                      , Control.Monad.Stack.Writer
+                     , Control.Monad.Stack.Error
                      , Control.Monad.Stack.N
                      , Control.Monad.Stack.Constraint
                      , Control.Monad.Stack.List

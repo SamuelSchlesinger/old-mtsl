@@ -6,6 +6,7 @@ import Control.Monad.Stack.TFunctor
 import Control.Monad.Stack.Trans
 import Control.Monad.Stack.Constraint
 import Control.Monad.Stack.Writer
+import Control.Monad.Stack.Error
 import Control.Monad.Stack.Reader
 import Control.Monad.Stack.State
 import Control.Monad.Stack.List
@@ -139,9 +140,26 @@ instance ( Monad m
     (s', (f, a)) <- runStateT (runStack m) s
     return (f, (s', a))
 
+instance ( Monad m
+         , Monoid w
+         , MonadTrans (Stack ts)
+         , MonadWriterT w (Stack ts)) => MonadWriter w (Stack (ErrorT e ': ts) m) where
+  tell = Stack . lift . tell
+  listen ma = Stack . ErrorT $ do
+    (w, ea) <- listen $ runErrorT (runStack ma)
+    case ea of
+      Left e -> return (Left e)
+      Right a -> return $ Right (w, a)
+  pass m = Stack . ErrorT $ pass $ do
+    ea <- runErrorT (runStack m)
+    case ea of
+      Left e -> return (id, Left e)
+      Right s -> return (fmap Right s)
+
 instance (MonadTrans (Stack ts), Monoid w) => MonadWriterT w (Stack (WriterT w ': ts))
 instance MonadWriterT w (Stack ts) => MonadWriterT w (Stack (ReaderT r ': ts))
 instance MonadWriterT w (Stack ts) => MonadWriterT w (Stack (StateT r ': ts))
+instance MonadWriterT w (Stack ts) => MonadWriterT w (Stack (ErrorT e ': ts))
 
 popWriterT :: Stack (WriterT w ': ts) m a -> Stack ts m (w, a)
 popWriterT = runWriterT . runStack
@@ -172,12 +190,21 @@ instance ( Monad m
     return (s, x)
   local f ma = Stack . StateT $ local f . runStateT (runStack ma)
 
+instance ( Monad m
+         , MonadReaderT r (Stack ts)) => MonadReader r (Stack (ErrorT s ': ts) m) where
+  ask = Stack . ErrorT $ fmap Right ask
+  local f ma = Stack . ErrorT $ local f $ runErrorT (runStack ma)
+
 instance MonadTrans (Stack ts) => MonadReaderT r (Stack (ReaderT r ': ts))
 instance (Monoid w, MonadReaderT r (Stack ts)) => MonadReaderT r (Stack (WriterT w ': ts))
 instance MonadReaderT r (Stack ts) => MonadReaderT r (Stack (StateT s ': ts)) 
+instance MonadReaderT r (Stack ts) => MonadReaderT r (Stack (ErrorT e ': ts))
 
-popReaderT :: Stack (ReaderT r ': ts) m a -> r -> Stack ts m a
-popReaderT = runReaderT . runStack
+popReaderT :: r -> Stack (ReaderT r ': ts) m a-> Stack ts m a
+popReaderT = flip (runReaderT . runStack)
+
+instance MonadState s m => MonadState s (Stack '[] m) where
+  state s = Stack (state s)
 
 instance ( Monad m
          , MonadTrans (Stack ts) ) => MonadState s (Stack (StateT s ': ts) m) where
@@ -194,9 +221,51 @@ instance ( Monad m
     a <- state s
     return (mempty, a)
 
+instance ( Monad m
+         , MonadState s (Stack ts m) ) => MonadState s (Stack (ErrorT w ': ts) m) where
+  state s = Stack . ErrorT $ fmap Right $ state s
+
 instance MonadTrans (Stack ts) => MonadStateT s (Stack (StateT s ': ts))
 instance (Monoid w, MonadStateT s (Stack ts)) => MonadStateT s (Stack (WriterT w ': ts))
 instance MonadStateT s (Stack ts) => MonadStateT s (Stack (ReaderT r ': ts))
+instance MonadStateT s (Stack ts) => MonadStateT s (Stack (ErrorT e ': ts)) 
 
-popStateT :: Stack (StateT s ': ts) m a -> s -> Stack ts m (s, a)
-popStateT = runStateT . runStack
+popStateT :: s -> Stack (StateT s ': ts) m a -> Stack ts m (s, a)
+popStateT = flip $ runStateT . runStack
+
+instance MonadError e m => MonadError e (Stack '[] m) where
+  throw = Stack . throw
+  catch ma h = Stack (catch (runStack ma) (runStack . h))
+
+instance ( Monad m
+         , MonadTrans (Stack ts) ) => MonadError e (Stack (ErrorT e ': ts) m) where
+  throw = Stack . throw
+  catch ma h = Stack . ErrorT $ do
+    ea <- runErrorT . runStack $ ma
+    case ea of
+      Left e -> runErrorT . runStack $ h e
+      Right a -> return (Right a)
+
+instance ( Monad m
+         , MonadError e (Stack ts m) ) => MonadError e (Stack (StateT s ': ts) m) where
+  throw = liftStack . throw 
+  catch ma h = Stack . StateT $ \s -> catch (runStateT (runStack ma) s) (flip (runStateT . runStack . h) s) 
+
+instance ( Monad m
+         , MonadError e (Stack ts m) ) => MonadError e (Stack (ReaderT s ': ts) m) where
+  throw = liftStack . throw
+  catch ma h = Stack . ReaderT $ \s -> catch (runReaderT (runStack ma) s) (flip (runReaderT . runStack . h) s)
+
+instance ( Monad m
+         , Monoid w
+         , MonadError e (Stack ts m) ) => MonadError e (Stack (WriterT w ': ts) m) where
+  throw = liftStack . throw
+  catch ma h = Stack . WriterT $ catch (runWriterT (runStack ma)) (runWriterT . runStack . h)
+
+instance MonadTrans (Stack ts) => MonadErrorT e (Stack (ErrorT e ': ts))
+instance (Monoid w, MonadErrorT e (Stack ts)) => MonadErrorT e (Stack (WriterT w ': ts))
+instance MonadErrorT e (Stack ts) => MonadErrorT e (Stack (ReaderT r ': ts))
+instance MonadErrorT e (Stack ts) => MonadErrorT e (Stack (StateT s ': ts))
+
+popErrorT :: Stack (ErrorT e ': ts) m a -> Stack ts m (Either e a)
+popErrorT = runErrorT . runStack

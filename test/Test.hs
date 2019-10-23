@@ -4,26 +4,30 @@ module Main (main) where
 
 import Control.Monad.Stack
 import Control.Monad.Stack.State
-import Control.Monad.Stack.Reader
-import Control.Monad.Stack.Writer
+import Control.Monad.Stack.Error
 import Control.Monad.Stack.List
+import Control.Monad.Stack.Writer
+import Control.Monad.Stack.Reader
 
-example :: ( MonadWriterT [String] (Stack ts)
-           , MonadReaderT Int      (Stack ts)
-           , MonadStateT  Int     (Stack ts)
-           , MonadReaderT Int     rt
+example :: ( MonadStateT  Int     (Stack ts)
+           , MonadErrorT  String  (Stack ts)
            , MonadStateT  Int     st
-           , Ordered '[rt, st] ts
+           , MonadErrorT  String  et
+           , Ordered '[st, et] ts
             ) => Stack ts IO ()
 
 example = do
-  tell @[String] ["Hello"]
-  i <- ask @Int
-  put @Int 5
+  throw @String "Hello"
 
-
-example' :: Stack '[WriterT [String], ReaderT Int, StateT Int] IO ()
-example' = example @_ @(ReaderT Int) @(StateT Int)
+example' :: Stack '[WriterT [String], ReaderT Int, StateT Int, ReaderT Bool, ErrorT String] IO ()
+example' = example @_ @(StateT Int) @(ErrorT String)
 
 main :: IO ()
-main = putStrLn "Test suite not yet implemented."
+main = do
+  x <-   runStack
+       . popErrorT
+       . popReaderT True
+       . popStateT 3
+       . popReaderT 5 
+       . popWriterT $ example'
+  print x
