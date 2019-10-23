@@ -25,6 +25,8 @@ library
                      , Control.Monad.Stack.N
                      , Control.Monad.Stack.Constraint
                      , Control.Monad.Stack.List
+                     , Control.Monad.Stack.TFunctor
+                     , Control.Monad.Stack.Interpretation
   -- other-modules:
   default-extensions:  RankNTypes
                      , FunctionalDependencies

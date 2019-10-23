@@ -1,5 +1,6 @@
 module Control.Monad.Stack.Writer where
 
+import Control.Monad.Stack.TFunctor
 import Control.Monad.Stack.Trans
 
 newtype WriterT w m a = WriterT { runWriterT :: m (w, a) }
@@ -41,3 +42,6 @@ instance (Monoid w, Monad m) => MonadWriter w (WriterT w m) where
 
 class (Monoid w, forall m. Monad m => MonadWriter w (t m), MonadTrans t) => MonadWriterT w t
 instance Monoid w => MonadWriterT w (WriterT w)
+
+instance Monoid w => TFunctor (WriterT w) where
+  tmap t = WriterT . t . runWriterT

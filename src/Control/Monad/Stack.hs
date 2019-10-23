@@ -1,6 +1,8 @@
 module Control.Monad.Stack where
 
+import Control.Applicative
 import Control.Monad
+import Control.Monad.Stack.TFunctor
 import Control.Monad.Stack.Trans
 import Control.Monad.Stack.Constraint
 import Control.Monad.Stack.Writer
@@ -9,10 +11,17 @@ import Control.Monad.Stack.State
 import Control.Monad.Stack.List
 import Data.Kind
 
+
 -- | The kind signature of a transformer, for convenience sake.
 type Transformer = (Type -> Type) -> Type -> Type
 
--- | The composition of a type level list of transformers
+-- | The direct composition of a type level list of transformers.
+type family Stack'' (ts :: [Transformer]) (m :: Type -> Type) :: Type -> Type where
+  Stack'' '[] m = m
+  Stack'' (t ': ts) m = t (Stack'' ts m)
+
+-- | The interleaved composition of a type level list of transformers
+-- with the 'Stack' newtype.
 type family Stack' (ts :: [Transformer]) (m :: Type -> Type) :: Type -> Type where
   Stack' '[] m = m
   Stack' (t ': ts) m = t (Stack ts m)
@@ -31,6 +40,12 @@ instance Applicative f => Applicative (Stack '[] f) where
 instance Monad f => Monad (Stack '[] f) where
   ma >>= f = Stack $ runStack ma >>= runStack . f
 
+instance Alternative f => Alternative (Stack '[] f) where
+  Stack a <|> Stack b = Stack (a <|> b)
+  empty = Stack empty
+
+instance MonadPlus f => MonadPlus (Stack '[] f)
+
 instance (Monad (Stack ts m), MonadTrans t) => Functor (Stack (t ': ts) m) where
   fmap f = Stack . fmap f . runStack 
 
@@ -48,6 +63,12 @@ instance MonadTrans (Stack '[]) where
 
 instance (MonadTrans t, MonadTrans (Stack ts)) => MonadTrans (Stack (t ': ts)) where
   lift = Stack . lift . lift
+
+instance TFunctor (Stack '[]) where
+  tmap t = Stack . t . runStack
+
+instance (TFunctor t, TFunctor (Stack ts)) => TFunctor (Stack (t ': ts)) where
+  tmap t = Stack . tmap (tmap t) . runStack
 
 liftStack :: (Monad (Stack ts m), MonadTrans t1) => Stack ts m a -> Stack (t1 : ts) m a
 liftStack = Stack . lift
@@ -122,6 +143,9 @@ instance (MonadTrans (Stack ts), Monoid w) => MonadWriterT w (Stack (WriterT w '
 instance MonadWriterT w (Stack ts) => MonadWriterT w (Stack (ReaderT r ': ts))
 instance MonadWriterT w (Stack ts) => MonadWriterT w (Stack (StateT r ': ts))
 
+popWriterT :: Stack (WriterT w ': ts) m a -> Stack ts m (w, a)
+popWriterT = runWriterT . runStack
+
 instance ( Monad m
          , MonadTrans (Stack ts) ) => MonadReader r (Stack (ReaderT r ': ts) m) where
   ask = Stack ask
@@ -152,6 +176,9 @@ instance MonadTrans (Stack ts) => MonadReaderT r (Stack (ReaderT r ': ts))
 instance (Monoid w, MonadReaderT r (Stack ts)) => MonadReaderT r (Stack (WriterT w ': ts))
 instance MonadReaderT r (Stack ts) => MonadReaderT r (Stack (StateT s ': ts)) 
 
+popReaderT :: Stack (ReaderT r ': ts) m a -> r -> Stack ts m a
+popReaderT = runReaderT . runStack
+
 instance ( Monad m
          , MonadTrans (Stack ts) ) => MonadState s (Stack (StateT s ': ts) m) where
   state s = Stack (state s)
@@ -170,3 +197,6 @@ instance ( Monad m
 instance MonadTrans (Stack ts) => MonadStateT s (Stack (StateT s ': ts))
 instance (Monoid w, MonadStateT s (Stack ts)) => MonadStateT s (Stack (WriterT w ': ts))
 instance MonadStateT s (Stack ts) => MonadStateT s (Stack (ReaderT r ': ts))
+
+popStateT :: Stack (StateT s ': ts) m a -> s -> Stack ts m (s, a)
+popStateT = runStateT . runStack

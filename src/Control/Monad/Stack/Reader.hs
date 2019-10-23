@@ -1,6 +1,7 @@
 module Control.Monad.Stack.Reader where
 
 import Control.Monad.Stack.Trans
+import Control.Monad.Stack.TFunctor
 import GHC.Types (Constraint)
 
 newtype ReaderT r m a = ReaderT { runReaderT :: r -> m a }
@@ -35,3 +36,6 @@ instance Monad m => MonadReader r (ReaderT r m) where
 
 class (forall m. Monad m => MonadReader r (t m), MonadTrans t) => MonadReaderT r t
 instance MonadReaderT r (ReaderT r)
+
+instance TFunctor (ReaderT r) where
+  tmap n = ReaderT . fmap n . runReaderT

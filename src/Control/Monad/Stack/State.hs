@@ -1,6 +1,7 @@
 module Control.Monad.Stack.State where
 
 import Control.Monad
+import Control.Monad.Stack.TFunctor
 import Control.Monad.Stack.Trans
 
 newtype StateT s m a = StateT { runStateT :: s -> m (s, a) }
@@ -42,4 +43,5 @@ instance Monad m => MonadState s (StateT s m) where
 class (forall m. Monad m => MonadState s (t m), MonadTrans t) => MonadStateT s t
 instance MonadStateT s (StateT s)
 
-  
+instance TFunctor (StateT s) where
+  tmap t = StateT . fmap t . runStateT
