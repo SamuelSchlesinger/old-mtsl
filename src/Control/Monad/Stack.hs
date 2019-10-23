@@ -9,6 +9,7 @@ import Control.Monad.Stack.Writer
 import Control.Monad.Stack.Error
 import Control.Monad.Stack.Reader
 import Control.Monad.Stack.State
+import Control.Monad.Stack.Free
 import Control.Monad.Stack.List
 import Data.Kind
 
