@@ -27,7 +27,6 @@ library
                      , Control.Monad.Stack.Constraint
                      , Control.Monad.Stack.List
                      , Control.Monad.Stack.TFunctor
-                     , Control.Monad.Stack.Interpretation
                      , Control.Monad.Stack.Free
   -- other-modules:
   default-extensions:  RankNTypes

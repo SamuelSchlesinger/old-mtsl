@@ -66,4 +66,4 @@ main2 :: IO ()
 main2 = void $ runStack . popStateT 10 $ example2
 
 main :: IO ()
-main = main0 >> main1 >> main2
+main = main0
