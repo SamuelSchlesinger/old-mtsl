@@ -1,5 +1,6 @@
 module Control.Monad.Stack where
 
+import Control.Monad.Stack.Adjoint
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Stack.TFunctor
@@ -143,7 +144,6 @@ instance ( Monad m
 
 instance ( Monad m
          , Monoid w
-         , MonadTrans (Stack ts)
          , MonadWriterT w (Stack ts)) => MonadWriter w (Stack (ErrorT e ': ts) m) where
   tell = Stack . lift . tell
   listen ma = Stack . ErrorT $ do
@@ -156,6 +156,19 @@ instance ( Monad m
     case ea of
       Left e -> return (id, Left e)
       Right s -> return (fmap Right s)
+
+--instance ( Monad m
+--         , Monoid w
+--         , Monad f
+--         , Traversable f
+--         , Traversable g
+--         , Monad g
+--         , Adjunction f g
+--         , MonadWriterT w (Stack ts)) => MonadWriter w (Stack (AdjointT f g ': ts) m) where
+--  tell a = liftStack (tell a)
+--  pass m = Stack . AdjointT $ return $ pass @w @(Stack ts m) $ do
+--    x <- sequence $ runAdjointT (runStack m)
+--    return $ fmap pure $ counit $ sequence x
 
 instance (MonadTrans (Stack ts), Monoid w) => MonadWriterT w (Stack (WriterT w ': ts))
 instance MonadWriterT w (Stack ts) => MonadWriterT w (Stack (ReaderT r ': ts))

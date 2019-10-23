@@ -1,7 +1,25 @@
+{-# LANGUAGE TypeApplications #-}
 module Control.Monad.Stack.Adjoint where
 
+import Control.Monad
+import Control.Monad.Stack.Trans
 import Data.Functor.Identity
 import Data.Functor.Compose
+
+newtype AdjointT f g m a = AdjointT { runAdjointT :: f (m (g a)) } 
+
+instance (Functor f, Functor g, Functor m) => Functor (AdjointT f g m) where
+  fmap f = AdjointT . fmap (fmap (fmap f)) . runAdjointT  
+
+instance (Adjunction f g, Monad m) => Applicative (AdjointT f g m) where
+  pure = AdjointT . fmap return . unit
+  (<*>) = ap
+
+instance (Adjunction f g, Monad m) => Monad (AdjointT f g m) where
+  m >>= f = AdjointT $ fmap (>>= counit . fmap (runAdjointT . f)) (runAdjointT m)
+
+instance (Adjunction f g, Traversable g) => MonadTrans (AdjointT f g) where
+  lift = AdjointT . fmap sequence . unit @f @g
 
 -- The laws that this must satisfy are
 -- fmap counit . unit = id
