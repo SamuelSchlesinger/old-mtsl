@@ -40,7 +40,7 @@ instance Applicative f => Applicative (Stack '[] f) where
   pure = Stack . pure
 
 instance Monad f => Monad (Stack '[] f) where
-  ma >>= f = Stack $ runStack ma >>= runStack . f
+  ma >>= f = Stack $ runStack ma >>= (runStack . f)
 
 instance Alternative f => Alternative (Stack '[] f) where
   Stack a <|> Stack b = Stack (a <|> b)
@@ -53,7 +53,7 @@ instance (Monad (Stack ts m), MonadTrans t) => Functor (Stack (t ': ts) m) where
 
 instance (Monad (Stack ts m), MonadTrans t) => Applicative (Stack (t ': ts) m) where
   (<*>) = ap
-  pure  = return
+  pure  = Stack . pure
 
 instance (Monad (Stack ts m), MonadTrans t) => Monad (Stack (t ': ts) m) where
   ma >>= f = Stack $ do

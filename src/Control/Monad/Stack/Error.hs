@@ -18,6 +18,7 @@ instance Monad m => Monad (ErrorT e m) where
     case ea of
       Left e -> return (Left e)
       Right a -> runErrorT $ f a
+  return = ErrorT . return . Right
 
 instance MonadTrans (ErrorT e) where
   lift = ErrorT . fmap Right

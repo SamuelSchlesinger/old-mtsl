@@ -11,7 +11,7 @@ instance Functor f => Functor (StateT s f) where
 
 instance Monad f => Applicative (StateT s f) where
   (<*>) = ap
-  pure = return
+  pure a = StateT \s -> return (s, a)
 
 instance Monad m => Monad (StateT s m) where
   ma >>= f = StateT \s0 -> do
@@ -24,16 +24,12 @@ instance MonadTrans (StateT s) where
    return (s, a)
 
 class Monad m => MonadState s m where
-  {-# MINIMAL (get, put) | state #-}
+  {-# MINIMAL state #-}
   get :: m s
   put :: s -> m ()
   state :: (s -> (s, a)) -> m a
   get = state \s -> (s, s)
   put s = state \_ -> (s, ())
-  state f = do
-    (s, a) <- fmap f get
-    put s
-    return a
 
 instance Monad m => MonadState s (StateT s m) where
   get = StateT \s -> return (s, s)
