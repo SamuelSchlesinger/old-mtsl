@@ -19,6 +19,7 @@ extra-source-files:  CHANGELOG.md
 library
   exposed-modules:     Control.Monad.Stack
                      , Control.Monad.Stack.Trans
+                     , Control.Monad.Stack.Adjoint
                      , Control.Monad.Stack.State
                      , Control.Monad.Stack.Reader
                      , Control.Monad.Stack.Writer
@@ -28,6 +29,7 @@ library
                      , Control.Monad.Stack.List
                      , Control.Monad.Stack.TFunctor
                      , Control.Monad.Stack.Free
+                     , Control.Monad.Stack.CoFree
   -- other-modules:
   default-extensions:  RankNTypes
                      , FunctionalDependencies
